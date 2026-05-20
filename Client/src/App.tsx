@@ -14,6 +14,7 @@ import SignUpPage from '@/pages/auth/SignUpPage';
 import ApprovalDashboard from '@/features/admin/components/ApprovalDashboard';
 import AdminOverview from '@/features/admin/components/AdminOverview';
 import RequestApprovalForm from '@/features/admin/components/RequestApprovalForm';
+import CreatorOverview from '@/features/elections/components/CreatorOverview';
 import CreateElectionForm from '@/features/elections/components/CreateElectionForm';
 import CreatorElectionsList from '@/features/elections/components/CreatorElectionsList';
 import EditElection from '@/features/elections/components/EditElection';
@@ -24,7 +25,9 @@ import MyPolls from '@/features/voting/components/MyPolls';
 import VoterDashboard from '@/features/voting/components/VoterDashboard';
 import LiveResultsDashboard from '@/features/analytics/components/LiveResultsDashboard';
 import PublicLandingPage from '@/pages/LandingPage';
-import { Home, Users, Settings, Vote, FileText } from 'lucide-react';
+import AuditLogs from '@/features/admin/components/AuditLogs';
+import ManageUsers from '@/features/admin/components/ManageUsers';
+import { Home, Users, Settings, Vote, FileText, ShieldCheck } from 'lucide-react';
 
 // Placeholder Pages for now
 const DashboardRedirect = () => {
@@ -41,7 +44,8 @@ const AdminLayout = () => {
       title="Admin Panel" 
       links={[
         { name: 'Dashboard', path: '/admin', icon: <Home className="h-4 w-4" /> },
-        { name: 'Approvals', path: '/admin/approvals', icon: <Users className="h-4 w-4" /> },
+        { name: 'Approvals', path: '/admin/approvals', icon: <ShieldCheck className="h-4 w-4" /> },
+        { name: 'Manage Users', path: '/admin/users', icon: <Users className="h-4 w-4" /> },
         { name: 'Audit Logs', path: '/admin/logs', icon: <FileText className="h-4 w-4" /> },
       ]} 
     />
@@ -136,6 +140,8 @@ export default function App() {
         }>
           <Route index element={<AdminOverview />} />
           <Route path="approvals" element={<ApprovalDashboard />} />
+          <Route path="users" element={<ManageUsers />} />
+          <Route path="logs" element={<AuditLogs />} />
         </Route>
 
         {/* Creator Routes */}
@@ -144,12 +150,7 @@ export default function App() {
             <CreatorLayout />
           </ProtectedRoute>
         }>
-          <Route index element={
-            <div className="max-w-2xl">
-              <h2 className="text-2xl font-bold mb-6">Creator Dashboard</h2>
-              <RequestApprovalForm />
-            </div>
-          } />
+          <Route index element={<CreatorOverview />} />
           <Route path="elections" element={<CreatorElectionsList />} />
           <Route path="elections/new" element={<CreateElectionForm />} />
           <Route path="elections/:id/edit" element={<EditElection />} />

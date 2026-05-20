@@ -1,3 +1,24 @@
+-- Safe DROP statements to allow re-running the script
+DROP TRIGGER IF EXISTS on_voter_registered ON public.voter_registrations CASCADE;
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users CASCADE;
+
+DROP FUNCTION IF EXISTS public.handle_new_user() CASCADE;
+DROP FUNCTION IF EXISTS public.generate_secret_voter_id() CASCADE;
+DROP FUNCTION IF EXISTS public.cast_vote(UUID, UUID, TEXT) CASCADE;
+
+DROP TABLE IF EXISTS public.audit_logs CASCADE;
+DROP TABLE IF EXISTS public.votes CASCADE;
+DROP TABLE IF EXISTS public.secret_voter_ids CASCADE;
+DROP TABLE IF EXISTS public.voter_registrations CASCADE;
+DROP TABLE IF EXISTS public.candidates CASCADE;
+DROP TABLE IF EXISTS public.elections CASCADE;
+DROP TABLE IF EXISTS public.election_requests CASCADE;
+DROP TABLE IF EXISTS public.profiles CASCADE;
+
+DROP TYPE IF EXISTS user_role CASCADE;
+DROP TYPE IF EXISTS election_status CASCADE;
+DROP TYPE IF EXISTS request_status CASCADE;
+
 -- 1. Custom Types & Enums
 CREATE TYPE user_role AS ENUM ('super_admin', 'election_creator', 'voter');
 CREATE TYPE election_status AS ENUM ('draft', 'upcoming', 'active', 'registration_closed', 'completed');
@@ -8,6 +29,7 @@ CREATE TABLE public.profiles (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
   role user_role NOT NULL DEFAULT 'voter',
   name TEXT NOT NULL,
+  email TEXT,
   phone TEXT,
   organization TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -108,7 +130,7 @@ ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 -- Profiles: Users can read all profiles (needed for displays), but only update their own.
 CREATE POLICY "Profiles are viewable by everyone" ON public.profiles FOR SELECT USING (true);
 CREATE POLICY "Users can insert their own profile" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
-CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'super_admin'));
 
 -- Election Requests: Creators can see their own, Admins can see/update all.
 CREATE POLICY "Creators can view own requests" ON public.election_requests FOR SELECT USING (auth.uid() = creator_id OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'super_admin'));
@@ -149,9 +171,34 @@ CREATE POLICY "Anyone can insert logs" ON public.audit_logs FOR INSERT WITH CHEC
 -- Trigger: Automatically create a profile when a new user signs up in Supabase Auth
 CREATE OR REPLACE FUNCTION public.handle_new_user() 
 RETURNS TRIGGER AS $$
+DECLARE
+  v_role user_role;
+  v_name TEXT;
+  v_phone TEXT;
 BEGIN
-  INSERT INTO public.profiles (id, name, role)
-  VALUES (new.id, new.raw_user_meta_data->>'name', COALESCE((new.raw_user_meta_data->>'role')::user_role, 'voter'));
+  -- Safe name resolution
+  v_name := COALESCE(new.raw_user_meta_data->>'name', split_part(new.email, '@', 1), 'User');
+  v_phone := new.raw_user_meta_data->>'phone';
+  
+  -- Safe role resolution
+  BEGIN
+    v_role := (new.raw_user_meta_data->>'role')::user_role;
+  EXCEPTION WHEN OTHERS THEN
+    v_role := 'voter'::user_role;
+  END;
+  
+  IF v_role IS NULL THEN
+    v_role := 'voter'::user_role;
+  END IF;
+
+  INSERT INTO public.profiles (id, name, email, phone, role)
+  VALUES (new.id, v_name, new.email, v_phone, v_role)
+  ON CONFLICT (id) DO UPDATE 
+  SET name = EXCLUDED.name,
+      email = EXCLUDED.email,
+      phone = EXCLUDED.phone,
+      role = EXCLUDED.role;
+      
   RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -159,6 +206,31 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+
+-- Trigger: Automatically generate a unique secret voter ID when registering for an election
+CREATE OR REPLACE FUNCTION public.generate_secret_voter_id()
+RETURNS TRIGGER AS $$
+DECLARE
+  v_secret_code TEXT;
+BEGIN
+  -- Generate unique code POLL-YYYY-XXXX
+  v_secret_code := 'POLL-' || to_char(NOW(), 'YYYY') || '-' || floor(random() * (9999-1000+1) + 1000)::text;
+  
+  -- Ensure it is unique
+  WHILE EXISTS (SELECT 1 FROM public.secret_voter_ids WHERE secret_code = v_secret_code) LOOP
+    v_secret_code := 'POLL-' || to_char(NOW(), 'YYYY') || '-' || floor(random() * (9999-1000+1) + 1000)::text;
+  END LOOP;
+
+  INSERT INTO public.secret_voter_ids (election_id, voter_id, secret_code)
+  VALUES (new.election_id, new.voter_id, v_secret_code);
+  
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER on_voter_registered
+  AFTER INSERT ON public.voter_registrations
+  FOR EACH ROW EXECUTE PROCEDURE public.generate_secret_voter_id();
 
 -- Secure Function: Cast a Vote
 CREATE OR REPLACE FUNCTION public.cast_vote(p_election_id UUID, p_candidate_id UUID, p_secret_code TEXT)

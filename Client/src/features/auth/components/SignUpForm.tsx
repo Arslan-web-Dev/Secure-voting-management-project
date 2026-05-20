@@ -122,8 +122,10 @@ export default function SignUpForm() {
           onChange={handleChange}
           className="mt-1 block w-full px-4 py-3 border border-slate-300 dark:border-white/10 rounded-xl shadow-sm focus:ring-2 focus:ring-primary focus:border-transparent sm:text-sm bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm dark:text-white transition-all"
         >
+          {/* Role selection options. Super admin should be created manually or via secure admin interface. */}
           <option value="voter">Voter (Participate in elections)</option>
           <option value="election_creator">Election Creator (Host elections)</option>
+          <option value="super_admin">Super Admin (Platform administrator)</option>
         </select>
       </div>
 

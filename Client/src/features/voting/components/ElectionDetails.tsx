@@ -93,7 +93,7 @@ export default function ElectionDetails() {
         throw new Error("Maximum voter capacity reached. Poll is locked.");
       }
 
-      // Step 2: Register Voter
+      // Step 2: Register Voter (Database trigger will generate the secret_voter_ids record automatically)
       const { error: regError } = await supabase
         .from('voter_registrations')
         .insert([{ election_id: id, voter_id: user.id }]);
@@ -103,23 +103,19 @@ export default function ElectionDetails() {
         throw regError;
       }
 
-      // Step 3: Trigger Secret ID Generation
-      // In a real production app, this should be a secure backend Edge Function that emails the user.
-      // For this implementation, we simulate the secure generation here.
-      const secretCode = `POLL-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
-      
-      const { error: secretError } = await supabase
+      // Step 3: Fetch the generated Secret ID
+      const { data: secretData, error: secretError } = await supabase
         .from('secret_voter_ids')
-        .insert([{ 
-          election_id: id, 
-          voter_id: user.id, 
-          secret_code: secretCode 
-        }]);
+        .select('secret_code')
+        .eq('election_id', id)
+        .eq('voter_id', user.id)
+        .single();
 
       if (secretError) {
-        console.error("Failed to generate secret ID:", secretError);
-      } else {
-        setSecretId(secretCode);
+        console.error("Failed to retrieve generated secret ID:", secretError);
+        throw new Error("Registration succeeded, but failed to retrieve your Secret ID. Please refresh the page.");
+      } else if (secretData) {
+        setSecretId(secretData.secret_code);
       }
       
       setIsRegistered(true);

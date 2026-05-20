@@ -47,7 +47,11 @@ export default function SignUpForm() {
         setTimeout(() => navigate('/auth/login'), 5000);
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to sign up');
+      if (err.message === 'Failed to fetch') {
+        setError('Failed to connect to authentication server. Please verify your Vercel Environment Variables (VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY) are configured.');
+      } else {
+        setError(err.message || 'Failed to sign up');
+      }
     } finally {
       setIsLoading(false);
     }

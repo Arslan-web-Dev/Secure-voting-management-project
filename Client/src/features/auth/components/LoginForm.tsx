@@ -32,7 +32,11 @@ export default function LoginForm() {
         navigate('/dashboard'); // Will be routed to correct dashboard based on role in App.tsx
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to login');
+      if (err.message === 'Failed to fetch') {
+        setError('Failed to connect to authentication server. Please verify your Vercel Environment Variables (VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY) are configured.');
+      } else {
+        setError(err.message || 'Failed to login');
+      }
     } finally {
       setIsLoading(false);
     }

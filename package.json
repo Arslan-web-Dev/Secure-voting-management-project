@@ -1,5 +1,12 @@
 {
-  "dependencies": {
-    "react-router-dom": "^6.22.2"
-  }
+  "name": "secure-voting-management-project",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "cd Client && npm run dev",
+    "build": "cd Client && npm install && npm run build",
+    "preview": "cd Client && npm run preview",
+    "install:client": "cd Client && npm install"
+  },
+  "dependencies": {}
 }

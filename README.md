@@ -1,100 +1,132 @@
-# Secure Online Election Management System
+# SecureVote — Secure Voting Management Platform
 
-A premium, full-stack, secure online election and voting management system built using **React (TypeScript)**, **Zustand**, **Tailwind CSS**, and **Supabase (PostgreSQL + Auth)**. 
-
-This platform enables cryptographic security, anonymous voting ledger auditing, admin approval gates for election creators, and real-time live results visualizations.
+A production-ready, full-stack election management system built with React + Vite + Supabase. Role-based access for admins, election creators, and voters.
 
 ---
 
-## System Architecture
+## 🚀 Live Deployment (Vercel)
 
-```mermaid
-graph TD
-    Client[React Frontend / Vite] <--> Store[Zustand Auth Store]
-    Client <--> API[Supabase JavaScript Client]
-    
-    subgraph Supabase Backend
-        API <--> Auth[Supabase Auth Service]
-        API <--> DB[(PostgreSQL Database)]
-        
-        Auth -- Trigger: handle_new_user --> DB
-        DB -- Trigger: on_voter_registered --> SecretGen[Generate Secret Voter ID]
-        DB -- RPC Function: cast_vote --> Votes[Cast Anonymous Vote]
-    end
+### One-Click Deploy
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Arslan-web-Dev/Secure-voting-management-project)
+
+### Manual Vercel Deployment
+
+1. Import the repository at [vercel.com/new](https://vercel.com/new)
+2. Vercel will auto-detect `vercel.json` — **no framework settings needed**
+3. Add Environment Variables (see below)
+4. Click **Deploy**
+
+---
+
+## ⚙️ Environment Variables
+
+Set these in Vercel → Project → Settings → Environment Variables:
+
+| Variable | Required | Description |
+|---|---|---|
+| `VITE_SUPABASE_URL` | ✅ | Your Supabase project URL |
+| `VITE_SUPABASE_ANON_KEY` | ✅ | Your Supabase anon/public key |
+
+Get these from: [supabase.com/dashboard](https://supabase.com/dashboard) → Your Project → Settings → API
+
+---
+
+## 🗄️ Database Setup (Supabase)
+
+1. Create a project at [supabase.com](https://supabase.com)
+2. Go to **SQL Editor** and run all migration files in order:
+   ```
+   supabase/migrations/
+   ```
+3. Optionally run `supabase/seed_demo_users.sql` for demo data
+
+---
+
+## 💻 Local Development
+
+```bash
+# Clone
+git clone https://github.com/Arslan-web-Dev/Secure-voting-management-project.git
+cd Secure-voting-management-project/Client
+
+# Install
+npm install
+
+# Configure environment
+cp .env.example .env
+# Edit .env with your Supabase credentials
+
+# Start dev server
+npm run dev
 ```
 
 ---
 
-## Key Features
+## 🏗️ Architecture
 
-### 1. Role-Based Authentication & Authorization
-* **Super Admin**: Overrides and manages user roles, reviews creator approval requests, monitors live audit logs, and exports system actions to CSV.
-* **Election Creator**: Requests platform approval, configures multi-candidate elections, sets voter capacity, manages candidate rosters, and views live dashboards.
-* **Voter**: Registers for active elections, obtains secure unique voter secret codes, casts anonymous votes, and views live election leaderboards.
+```
+Secure-voting-management-project/
+├── vercel.json              # Vercel deployment config (SPA rewrites + security headers)
+├── Client/                  # React + Vite frontend
+│   ├── src/
+│   │   ├── App.tsx          # Root router with protected routes
+│   │   ├── features/
+│   │   │   ├── admin/       # Super admin dashboard
+│   │   │   ├── elections/   # Election creator tools
+│   │   │   ├── voting/      # Voter portal
+│   │   │   ├── candidates/  # Candidate management
+│   │   │   └── analytics/   # Live results
+│   │   ├── pages/
+│   │   │   ├── LandingPage.tsx
+│   │   │   └── auth/        # Login + Signup
+│   │   ├── layouts/         # AuthLayout, DashboardLayout
+│   │   ├── store/           # Zustand auth store
+│   │   └── lib/             # Supabase client
+│   └── public/
+│       ├── robots.txt
+│       └── _redirects       # SPA fallback
+└── supabase/
+    ├── migrations/          # SQL schema files
+    └── seed_demo_users.sql
+```
 
-### 2. Double-Gate Approval Protocol
-* New election creators cannot host polls immediately. They must submit details (purpose, organization, name) to request approval.
-* Super Admins approve or reject requests inside the Admin Approvals Dashboard.
+### Tech Stack
 
-### 3. Cryptographic Secret Voter Codes
-* Upon registering for an election, the PostgreSQL database trigger automatically generates a secure unique code (`POLL-YYYY-XXXX`).
-* The code is fetched securely from the database and displayed to the voter. The client has no input on code generation, securing against forgery.
+| Layer | Technology |
+|---|---|
+| Frontend | React 18 + TypeScript + Vite |
+| Styling | Tailwind CSS + Framer Motion |
+| Routing | React Router v6 |
+| Auth & DB | Supabase (PostgreSQL + Auth) |
+| State | Zustand |
+| Forms | React Hook Form + Zod |
+| Charts | Recharts |
+| Deployment | Vercel |
 
-### 4. Fully Anonymous Voting Ledger
-* Votes are cast using a secure Database RPC function `cast_vote()` which validates the secret voter code, checks if it's already used, inserts an anonymous vote record, marks the code as used, and saves a system audit log.
-* The public results page renders a **Public Cryptographic Audit Ledger** containing vote signatures (UUIDs) and timestamps, allowing anyone to verify the authenticity of the election outcome without compromising voter anonymity.
+### User Roles
 
----
-
-## Live Demo Accounts & Credentials
-
-For evaluation and testing purposes, you can use the pre-configured demo credentials below:
-
-| Role | Email | Password | Access Status |
-| :--- | :--- | :--- | :--- |
-| **Super Admin** | `admin@voting.com` | `demo123` | Active / Pre-seeded |
-| **Election Creator** | `creator@voting.com` | `demo123` | Active / Pre-approved |
-| **Voter** | `voter@voting.com` | `demo123` | Active / Pre-seeded |
-
----
-
-## Local Setup & Installation
-
-### Prerequisites
-* **Node.js** (v18 or higher)
-* **Supabase Account / Project**
-
-### 1. Database Schema Setup
-1. Log in to your **Supabase Dashboard**.
-2. Go to the **SQL Editor** tab.
-3. Click **New Query**.
-4. Open the [20260520000000_initial_schema.sql](file:///supabase/migrations/20260520000000_initial_schema.sql) file from this repository, copy the contents, paste them into the Supabase editor, and click **Run**.
-5. *Optional*: Open the [seed_demo_users.sql](file:///supabase/seed_demo_users.sql) file, copy the contents, and run it in the editor to automatically seed the demo credentials.
-
-### 2. Frontend Configuration
-1. Navigate to the `Client` directory:
-   ```bash
-   cd Client
-   ```
-2. Install npm dependencies:
-   ```bash
-   npm install
-   ```
-3. Create a `.env` file in the root of the `Client` directory and add your Supabase credentials:
-   ```env
-   VITE_SUPABASE_URL=https://your-project-ref.supabase.co
-   VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
-   ```
-4. Start the local Vite development server:
-   ```bash
-   npm run dev
-   ```
-5. Open your browser and navigate to `http://localhost:5173`.
+| Role | Access |
+|---|---|
+| `super_admin` | Full admin panel, user management, audit logs |
+| `election_creator` | Create/manage elections, view results |
+| `voter` | Vote in assigned elections, view results |
 
 ---
 
-## Security Implementation Details
+## 🔒 Security
 
-* **Row Level Security (RLS)**: Active on all database tables. All query constraints are enforced database-side based on `auth.uid()` and roles.
-* **SQL Injection & Privilege Escalation Protection**: The cast vote process runs inside a `SECURITY DEFINER` function with strict variable validation, eliminating direct client write access to the ledger.
-* **Audit Logging**: Fully automated database event tracking for credential updates, administrative role changes, vote castings, and approval requests.
+- All protected routes require authentication
+- Role-based access control enforced client-side (and should be enforced in Supabase RLS policies)
+- Security headers set via `vercel.json`: `X-Frame-Options`, `X-XSS-Protection`, `X-Content-Type-Options`, `Referrer-Policy`
+- Assets are cache-immutable with hashed filenames
+- Environment variables are never committed (see `.gitignore`)
+
+---
+
+## 📦 Build & Performance
+
+- **Code splitting**: vendor bundles separated (React, Supabase, Charts, PDF)
+- **Main bundle**: ~123KB gzipped (down from 1.6MB monolithic)
+- **Asset caching**: 1-year cache on all `/assets/*`
+

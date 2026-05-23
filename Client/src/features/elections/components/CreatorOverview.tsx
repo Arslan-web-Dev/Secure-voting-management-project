@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import RequestApprovalForm from '@/features/admin/components/RequestApprovalForm';
 import { 
   Loader2, Plus, List, Vote, CheckCircle2, 
-  Clock, AlertCircle, HelpCircle, Users, BarChart3, ShieldAlert 
+  Clock, AlertCircle, Users, BarChart3, ShieldAlert 
 } from 'lucide-react';
 
 interface Request {

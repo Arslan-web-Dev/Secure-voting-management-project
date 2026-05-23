@@ -1,7 +1,7 @@
 import React from 'react';
 import { Outlet, Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/useAuthStore';
-import { LogOut, Home, Settings, User } from 'lucide-react';
+import { LogOut, Home, User } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
 export default function DashboardLayout({ title, links }: { title: string, links: { name: string, path: string, icon: React.ReactNode }[] }) {

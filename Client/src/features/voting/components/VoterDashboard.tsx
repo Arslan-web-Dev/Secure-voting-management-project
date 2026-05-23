@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { Link } from 'react-router-dom';
-import { Loader2, Vote, Clock, ArrowRight } from 'lucide-react';
+import { Loader2, Vote, ArrowRight } from 'lucide-react';
 
 export default function VoterDashboard() {
   const [activeElections, setActiveElections] = useState<any[]>([]);

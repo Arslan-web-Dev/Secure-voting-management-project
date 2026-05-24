@@ -25,7 +25,7 @@ type CreatorRequest = Pick<
 type Election = Pick<
   ElectionRecord,
   'id' | 'title' | 'status' | 'is_locked' | 'max_voters'
-> & { profiles?: { full_name: string } | null, rejection_reason?: string | null };
+> & { profiles?: { full_name: string }[] | null, rejection_reason?: string | null };
 
 type VoterProfile = Pick<ProfileRecord, 'id' | 'full_name' | 'email'>;
 
@@ -539,7 +539,7 @@ const AdminDashboard = () => {
                 <div className="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-6">
                   <div>
                     <h4 className="m-0 mb-1">{election.title}</h4>
-                    <p className="text-muted small m-0">Requested by: {election.profiles?.full_name || 'Unknown'}</p>
+                    <p className="text-muted small m-0">Requested by: {election.profiles?.[0]?.full_name || 'Unknown'}</p>
                   </div>
                   <div className="d-flex align-items-center gap-3">
                     <button 

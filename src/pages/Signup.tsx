@@ -8,6 +8,7 @@ import { supabase } from '../lib/supabaseClient';
 import { toast } from 'sonner';
 import { logActivity } from '../lib/audit';
 import { getErrorMessage } from '../lib/errors';
+import { fadeUp, scaleUp, bounceIn, staggerContainer } from '../lib/animations';
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -86,58 +87,116 @@ const Signup = () => {
   return (
     <div className="min-vh-100 d-flex align-items-center justify-content-center bg-deep py-20">
       <div className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden">
-        <div className="neon-blob neon-blob-secondary -top-20 -left-20"></div>
-        <div className="neon-blob neon-blob-success -bottom-20 -right-20"></div>
+        <motion.div 
+          className="neon-blob neon-blob-secondary -top-20 -left-20"
+          animate={{ scale: [1, 1.4, 1], x: [0, 40, 0], y: [0, -30, 0] }}
+          transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <motion.div 
+          className="neon-blob neon-blob-success -bottom-20 -right-20"
+          animate={{ scale: [1, 1.3, 1], x: [0, -35, 0], y: [0, 35, 0] }}
+          transition={{ duration: 11, repeat: Infinity, ease: "easeInOut" }}
+        />
       </div>
 
       <motion.div 
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="glass-card max-w-2xl w-full"
+        initial="hidden"
+        animate="visible"
+        variants={scaleUp}
+        className="glass-card max-w-2xl w-full relative overflow-hidden"
+        whileHover={{ scale: 1.01 }}
+        transition={{ duration: 0.3 }}
       >
-        <div className="text-center mb-8">
-          <div className="h3 font-display fw-bold text-primary mb-2">SecureVote</div>
-          <h1 className="h2 font-heading fw-bold">Create Account</h1>
-          <p className="text-muted">Join the most secure voting platform</p>
-        </div>
+        <motion.div 
+          className="absolute top-0 right-0 w-40 h-40 bg-primary/5 blur-2xl -z-10"
+          animate={{ scale: [1, 1.3, 1], rotate: [0, 120, 0] }}
+          transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <motion.div 
+          className="text-center mb-8"
+          initial="hidden"
+          animate="visible"
+          variants={staggerContainer}
+        >
+          <motion.div variants={bounceIn}>
+            <div className="h3 font-display fw-bold text-primary mb-2">SecureVote</div>
+          </motion.div>
+          <motion.h1 
+            className="h2 font-heading fw-bold"
+            variants={fadeUp}
+          >
+            Create Account
+          </motion.h1>
+          <motion.p 
+            className="text-muted"
+            variants={fadeUp}
+          >
+            Join the most secure voting platform
+          </motion.p>
+        </motion.div>
 
         {error && (
-          <div className="bg-error/10 border border-error/20 text-error p-4 rounded-xl mb-6 d-flex align-items-center gap-2">
+          <motion.div 
+            className="bg-error/10 border border-error/20 text-error p-4 rounded-xl mb-6 d-flex align-items-center gap-2"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+          >
             <AlertCircle size={18} /> {error}
-          </div>
+          </motion.div>
         )}
 
-        <form onSubmit={handleSignup} className="row g-4">
-          <div className="col-12">
+        <motion.form 
+          onSubmit={handleSignup} 
+          className="row g-4"
+          initial="hidden"
+          animate="visible"
+          variants={staggerContainer}
+        >
+          <motion.div className="col-12" variants={fadeUp}>
             <label className="text-muted small mb-2 d-block">Account Type</label>
             <div className="row g-3">
               <div className="col-6">
-                <div 
+                <motion.div 
                   onClick={() => setFormData({ ...formData, role: 'voter' })}
                   className={`glass p-4 rounded-xl text-center cursor-pointer border transition-all ${
                     formData.role === 'voter' ? 'border-primary bg-primary/10 text-main' : 'border-white/5 text-dim hover:border-white/20'
                   }`}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
                 >
                   <span className="small fw-bold">Voter</span>
-                </div>
+                </motion.div>
               </div>
               <div className="col-6">
-                <div 
+                <motion.div 
                   onClick={() => setFormData({ ...formData, role: 'election_creator' })}
                   className={`glass p-4 rounded-xl text-center cursor-pointer border transition-all ${
                     formData.role === 'election_creator' ? 'border-primary bg-primary/10 text-main' : 'border-white/5 text-dim hover:border-white/20'
                   }`}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
                 >
                   <span className="small fw-bold">Election Creator</span>
-                </div>
+                </motion.div>
               </div>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="col-md-6">
+          <motion.div className="col-md-6" variants={fadeUp}>
             <label className="text-muted small mb-2 d-block">Full Name</label>
-            <div className="glass d-flex align-items-center gap-3 px-4 py-3 rounded-xl border-white/5 focus-within:border-primary/50 transition-all">
-              <User size={18} className="text-dim" />
+            <motion.div 
+              className="glass d-flex align-items-center gap-3 px-4 py-3 rounded-xl border-white/5 focus-within:border-primary/50 transition-all"
+              whileHover={{ scale: 1.02 }}
+              transition={{ duration: 0.3 }}
+            >
+              <motion.div
+                animate={{ rotate: [0, 5, 0] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <User size={18} className="text-dim" />
+              </motion.div>
               <input 
                 type="text" 
                 placeholder="Enter your full name" 
@@ -146,13 +205,22 @@ const Signup = () => {
                 value={formData.fullName}
                 onChange={(e) => setFormData({...formData, fullName: e.target.value})}
               />
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
 
-          <div className="col-md-6">
+          <motion.div className="col-md-6" variants={fadeUp}>
             <label className="text-muted small mb-2 d-block">Email Address</label>
-            <div className="glass d-flex align-items-center gap-3 px-4 py-3 rounded-xl border-white/5 focus-within:border-primary/50 transition-all">
-              <Mail size={18} className="text-dim" />
+            <motion.div 
+              className="glass d-flex align-items-center gap-3 px-4 py-3 rounded-xl border-white/5 focus-within:border-primary/50 transition-all"
+              whileHover={{ scale: 1.02 }}
+              transition={{ duration: 0.3 }}
+            >
+              <motion.div
+                animate={{ x: [0, 3, 0] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <Mail size={18} className="text-dim" />
+              </motion.div>
               <input 
                 type="email" 
                 placeholder="Enter your email" 
@@ -161,13 +229,22 @@ const Signup = () => {
                 value={formData.email}
                 onChange={(e) => setFormData({...formData, email: e.target.value})}
               />
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
 
-          <div className="col-12">
+          <motion.div className="col-12" variants={fadeUp}>
             <label className="text-muted small mb-2 d-block">Password</label>
-            <div className="glass d-flex align-items-center gap-3 px-4 py-3 rounded-xl border-white/5 focus-within:border-primary/50 transition-all">
-              <Lock size={18} className="text-dim" />
+            <motion.div 
+              className="glass d-flex align-items-center gap-3 px-4 py-3 rounded-xl border-white/5 focus-within:border-primary/50 transition-all"
+              whileHover={{ scale: 1.02 }}
+              transition={{ duration: 0.3 }}
+            >
+              <motion.div
+                animate={{ y: [0, -2, 0] }}
+                transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <Lock size={18} className="text-dim" />
+              </motion.div>
               <input 
                 type="password" 
                 placeholder="••••••••" 
@@ -176,8 +253,8 @@ const Signup = () => {
                 value={formData.password}
                 onChange={(e) => setFormData({...formData, password: e.target.value})}
               />
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
 
           {formData.role === 'election_creator' && (
             <>
@@ -228,7 +305,7 @@ const Signup = () => {
             </>
           )}
 
-          <div className="col-12">
+          <motion.div className="col-12" variants={bounceIn} whileHover={{ y: -4 }} whileTap={{ scale: 0.98 }} transition={{ duration: 0.3 }}>
             <button 
               type="submit" 
               disabled={loading}
@@ -236,12 +313,17 @@ const Signup = () => {
             >
               {loading ? <div className="spinner" style={{width: 20, height: 20, borderWidth: 2}}></div> : 'Create Account'} <ChevronRight size={20} />
             </button>
-          </div>
-        </form>
+          </motion.div>
+        </motion.form>
 
-        <p className="text-center text-muted mt-8 mb-0">
+        <motion.p 
+          className="text-center text-muted mt-8 mb-0"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+        >
           Already have an account? <Link to="/login" className="text-primary fw-bold">Sign In</Link>
-        </p>
+        </motion.p>
       </motion.div>
     </div>
   );

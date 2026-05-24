@@ -100,7 +100,45 @@ erDiagram
 
 ---
 
+## 🏗️ System Architecture
+
+```mermaid
+graph TB
+    subgraph "Frontend"
+        A[React 19 + TypeScript]
+        B[Framer Motion]
+        C[Tailwind CSS]
+        D[React Router]
+    end
+    
+    subgraph "Backend"
+        E[Supabase Auth]
+        F[PostgreSQL Database]
+        G[Row Level Security]
+        H[Storage Bucket]
+    end
+    
+    subgraph "External Services"
+        I[Resend API]
+        J[Email Notifications]
+    end
+    
+    A --> E
+    A --> F
+    B --> A
+    C --> A
+    D --> A
+    E --> F
+    G --> F
+    F --> H
+    I --> J
+    E --> I
+```
+
+---
+
 ## 🛠️ Storage Bucket Configuration
+
 To support candidate photo uploads, please ensure the `candidate-photos` bucket is created in Supabase Storage with **public read access**:
 1. Go to the **Storage** page in your Supabase Dashboard.
 2. Click **New Bucket** and name it `candidate-photos`.
@@ -155,7 +193,7 @@ Open your browser and navigate to `http://localhost:5173`.
 
 ---
 
-## � Demo Credentials
+## 🔐 Demo Credentials
 
 For testing purposes, you can use the following demo accounts. All accounts use the same password for convenience.
 
@@ -169,13 +207,16 @@ For testing purposes, you can use the following demo accounts. All accounts use 
 
 ---
 
-## ��️ Build and Deploy
+## 🛠️ Build and Deploy
 
 To compile the application for production:
 ```bash
 npm run build
 ```
 This outputs an optimized bundle to the `dist/` directory, ready to be hosted on Vercel, Netlify, or AWS.
-#   V o t t i n g M a n a g m e n t S y s t e m 2 
- 
- 
+
+---
+
+## 📝 License
+
+This project is licensed under the MIT License.

@@ -1,8 +1,0 @@
-User-agent: *
-Allow: /
-Disallow: /admin/
-Disallow: /creator/
-Disallow: /voter/
-Disallow: /auth/
-
-Sitemap: https://your-domain.vercel.app/sitemap.xml

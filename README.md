@@ -209,11 +209,28 @@ For testing purposes, you can use the following demo accounts. All accounts use 
 
 ## 🛠️ Build and Deploy
 
+### Local Build
 To compile the application for production:
 ```bash
 npm run build
 ```
-This outputs an optimized bundle to the `dist/` directory, ready to be hosted on Vercel, Netlify, or AWS.
+This outputs an optimized bundle to the `dist/` directory.
+
+### Deploy to Vercel
+
+For detailed Vercel deployment instructions, see [DEPLOYMENT.md](./DEPLOYMENT.md).
+
+**Quick Start:**
+1. Push your code to GitHub
+2. Import repository in Vercel
+3. Add environment variables:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+   - `VITE_RESEND_API_KEY` (optional)
+4. Deploy
+
+**Vercel Configuration:**
+The project includes `vercel.json` with SPA routing configuration for React Router.
 
 ---
 

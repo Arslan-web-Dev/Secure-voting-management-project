@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Shield, UserCheck, UserX, Search, Mail, Phone, Building2, FileText, Unlock, Users, AlertTriangle } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
+import { hashString } from '../../lib/crypto';
 import { toast } from 'sonner';
 import { sendEmail } from '../../lib/emailService';
 import { logActivity } from '../../lib/audit';
@@ -285,7 +286,7 @@ const AdminDashboard = () => {
       const prefix = election.title.substring(0, 3).toUpperCase().replace(/[^A-Z]/g, 'EL');
       const randomSeq = Math.floor(1000 + Math.random() * 9000);
       const secretId = `POLL-${prefix}-${randomSeq}`;
-      const secretIdHash = btoa(secretId); // Simple hash for db
+      const secretIdHash = await hashString(secretId); // SHA-256 hash for db
       const maskedSecretId = `****${secretId.slice(-4)}`;
 
       // 2. Insert voter registration with status 'approved' (Admin bypasses checks)

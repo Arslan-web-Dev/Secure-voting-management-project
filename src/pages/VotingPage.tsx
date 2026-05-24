@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Shield, Lock, ChevronRight, Vote, AlertCircle, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
+import { hashString } from '../lib/crypto';
 import { toast } from 'sonner';
 import { getErrorMessage } from '../lib/errors';
 import type { CandidateRecord } from '../types/models';
@@ -59,7 +60,7 @@ const VotingPage = () => {
     }
 
     // 1. Hash the entered secret ID the same way it was stored
-    const enteredHash = btoa(secretId);
+    const enteredHash = await hashString(secretId);
 
     // 2. Look up the voter_registration for this election with matching hash
     const { data: reg, error } = await supabase
@@ -80,7 +81,7 @@ const VotingPage = () => {
     }
 
     // 3. Check if this voter already voted
-    const voterHash = btoa(`${reg.user_id}-${id}`);
+    const voterHash = await hashString(`${reg.user_id}-${id}`);
     const { data: existingVote } = await supabase
       .from('votes')
       .select('id')
@@ -104,7 +105,7 @@ const VotingPage = () => {
     setSubmitting(true);
 
     try {
-      const voterHash = btoa(`${verifiedUserId}-${id}`);
+      const voterHash = await hashString(`${verifiedUserId}-${id}`);
 
       const { error } = await supabase
         .from('votes')

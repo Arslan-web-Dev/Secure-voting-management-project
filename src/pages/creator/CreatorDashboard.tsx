@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Vote, Users, Clock, Plus, BarChart3, ShieldAlert, Check, X, Lock, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
+import { hashString } from '../../lib/crypto';
 import { useAuth } from '../../hooks/useAuth';
 import { toast } from 'sonner';
 import { sendEmail } from '../../lib/emailService';
@@ -216,7 +217,7 @@ const CreatorDashboard = () => {
         const reg = approvedVoters[i];
         const seqNumber = String(i + 1).padStart(4, '0');
         const secretId = `POLL-${prefix}-${seqNumber}`;
-        const secretIdHash = btoa(secretId); // Simple client-side hash
+        const secretIdHash = await hashString(secretId); // SHA-256 hash for db
         const maskedSecretId = `****${secretId.slice(-4)}`;
 
         // Save secret ID hash to the registration

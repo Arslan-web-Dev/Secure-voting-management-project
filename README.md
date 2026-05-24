@@ -135,6 +135,18 @@ VITE_RESEND_API_KEY=your-optional-resend-api-key
 ### 3. Deploy Supabase Schema
 Copy the contents of `supabase/schema.sql` and run it in the **SQL Editor** of your Supabase dashboard to instantly configure the database tables, triggers, and Row Level Security (RLS) policies.
 
+### 3.5. Create Demo Users (Optional)
+To create demo user accounts for testing:
+1. Go to **Authentication** > **Users** in your Supabase Dashboard
+2. Click **"Add user"** and **"Create new user"**
+3. Manually create the following users with password `Demo@123`:
+   - demo.voter@example.com (Voter)
+   - demo.creator@example.com (Election Creator)
+   - demo.admin@example.com (Super Admin)
+4. After creating users, run the SQL script `supabase/demo-users.sql` in the **SQL Editor** to set up their profiles with appropriate roles.
+
+**Important**: Do NOT create users directly via SQL in auth.users table. Supabase Auth uses PBKDF2 with SHA256 password hashing which is incompatible with PostgreSQL's crypt() function. Always create users through the Supabase Dashboard or Auth API.
+
 ### 4. Run Development Server
 ```bash
 npm run dev
@@ -143,12 +155,27 @@ Open your browser and navigate to `http://localhost:5173`.
 
 ---
 
-## 🛠️ Build and Deploy
+## � Demo Credentials
+
+For testing purposes, you can use the following demo accounts. All accounts use the same password for convenience.
+
+| Role | Email | Password |
+| :--- | :--- | :--- |
+| **Voter** | demo.voter@example.com | Demo@123 |
+| **Election Creator** | demo.creator@example.com | Demo@123 |
+| **Super Admin** | demo.admin@example.com | Demo@123 |
+
+**Note**: These demo accounts should be created in your Supabase Auth dashboard before testing. You can create them manually in the Supabase Dashboard under Authentication > Users.
+
+---
+
+## ��️ Build and Deploy
 
 To compile the application for production:
 ```bash
 npm run build
 ```
 This outputs an optimized bundle to the `dist/` directory, ready to be hosted on Vercel, Netlify, or AWS.
-#   V o t t i n g M a n a g m e n t S y s t e m 2  
+#   V o t t i n g M a n a g m e n t S y s t e m 2 
+ 
  

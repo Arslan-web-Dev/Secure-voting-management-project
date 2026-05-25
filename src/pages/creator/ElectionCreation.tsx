@@ -152,7 +152,7 @@ const ElectionCreation = () => {
       });
 
       toast.success(publishStatus === 'draft' ? 'Election saved as draft!' : 'Election submitted for admin approval!');
-      navigate('/dashboard/elections');
+      navigate('/dashboard');
     } catch (error: unknown) {
       console.error('Error creating election:', error);
       toast.error(getErrorMessage(error, 'Failed to create election. Please try again.'));

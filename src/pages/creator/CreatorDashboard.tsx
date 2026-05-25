@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Vote, Users, Clock, Plus, BarChart3, ShieldAlert, Check, X, Lock, RefreshCw } from 'lucide-react';
+import { Vote, Users, Clock, Plus, BarChart3, ShieldAlert, Check, X, Lock, RefreshCw, Ban } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../hooks/useAuth';
@@ -8,6 +8,8 @@ import { toast } from 'sonner';
 import { sendEmail } from '../../lib/emailService';
 import { logActivity } from '../../lib/audit';
 import { getErrorMessage } from '../../lib/errors';
+import { hashSecretId, generateSecretId, maskSecretId } from '../../lib/secretId';
+import { secretIdEmail, registrationRejectedEmail, electionCancelledEmail } from '../../lib/emailTemplates';
 import type {
   ElectionRecord,
   ProfileRecord,
@@ -17,7 +19,7 @@ import type {
 interface Election
   extends Pick<
     ElectionRecord,
-    'id' | 'title' | 'status' | 'max_voters' | 'is_locked' | 'created_at'
+    'id' | 'title' | 'status' | 'max_voters' | 'is_locked' | 'created_at' | 'start_date' | 'end_date'
   > {
   voter_count: number;
 }
@@ -173,20 +175,94 @@ const CreatorDashboard = () => {
   };
 
   const handleUpdateRegStatus = async (regId: string, status: VoterRegistration['status']) => {
+    const reg = registrations.find(r => r.id === regId);
+    if (!reg || !selectedElection) return;
+
+    let secretIdHash: string | undefined;
+    let maskedSecretId: string | undefined;
+    let secretId: string | undefined;
+
+    if (status === 'approved') {
+      const approvedSoFar = registrations.filter(r => r.status === 'approved').length;
+      secretId = generateSecretId(selectedElection.title, approvedSoFar);
+      secretIdHash = await hashSecretId(secretId);
+      maskedSecretId = maskSecretId(secretId);
+    }
+
     const { error } = await supabase
       .from('voter_registrations')
-      .update({ status })
+      .update({
+        status,
+        ...(secretIdHash && { secret_id_hash: secretIdHash, masked_secret_id: maskedSecretId }),
+      })
       .eq('id', regId);
 
     if (!error) {
-      toast.success(`Registration status updated to ${status}`);
+      toast.success(`Registration ${status}`);
       setRegistrations(registrations.map(r => r.id === regId ? { ...r, status } : r));
-      if (selectedElection) {
-        void refreshElections();
+      void refreshElections();
+
+      const voterEmail = reg.profiles.email || '';
+      const voterName = reg.profiles.full_name || 'Voter';
+
+      if (status === 'approved' && secretId) {
+        const tpl = secretIdEmail({
+          voterName,
+          electionTitle: selectedElection.title,
+          secretId,
+          startDate: new Date(selectedElection.start_date ?? '').toLocaleString(),
+          endDate: new Date(selectedElection.end_date ?? '').toLocaleString(),
+          votingUrl: `${window.location.origin}/election/${selectedElection.id}/vote`,
+        });
+        await sendEmail({ to: voterEmail, ...tpl });
+        await logActivity({
+          action: 'VOTER_APPROVED',
+          userId: user?.id,
+          metadata: { voter_id: reg.profiles.id, election_id: selectedElection.id, secret_id_masked: maskedSecretId ?? '' },
+        });
+      } else if (status === 'rejected') {
+        const tpl = registrationRejectedEmail({ voterName, electionTitle: selectedElection.title });
+        await sendEmail({ to: voterEmail, ...tpl });
+        await logActivity({
+          action: 'VOTER_REJECTED',
+          userId: user?.id,
+          metadata: { voter_id: reg.profiles.id, election_id: selectedElection.id },
+        });
       }
     } else {
       toast.error(error.message);
     }
+  };
+
+  const handleCancelElection = async (electionId: string) => {
+    const election = elections.find(e => e.id === electionId);
+    if (!election) return;
+    if (!window.confirm(`Cancel "${election.title}"? All registered voters will be notified.`)) return;
+
+    const { error } = await supabase
+      .from('elections').update({ status: 'cancelled' }).eq('id', electionId);
+    if (error) { toast.error(error.message); return; }
+
+    toast.success('Election cancelled');
+
+    // Notify all approved voters
+    const { data: regs } = await supabase
+      .from('voter_registrations')
+      .select('profiles!inner(full_name, email)')
+      .eq('election_id', electionId)
+      .in('status', ['approved', 'pending']);
+
+    if (regs) {
+      for (const r of regs as unknown as { profiles: { full_name: string; email: string }[] }[]) {
+        const profile = r.profiles[0];
+        if (profile?.email) {
+          const tpl = electionCancelledEmail({ voterName: profile.full_name, electionTitle: election.title });
+          await sendEmail({ to: profile.email, ...tpl });
+        }
+      }
+    }
+    await logActivity({ action: 'ELECTION_CANCELLED', userId: user?.id, metadata: { election_id: electionId, title: election.title } });
+    void refreshElections();
   };
 
   const handleFinalizeList = async () => {
@@ -216,8 +292,8 @@ const CreatorDashboard = () => {
         const reg = approvedVoters[i];
         const seqNumber = String(i + 1).padStart(4, '0');
         const secretId = `POLL-${prefix}-${seqNumber}`;
-        const secretIdHash = btoa(secretId); // Simple client-side hash
-        const maskedSecretId = `****${secretId.slice(-4)}`;
+        const secretIdHash = await hashSecretId(secretId);
+        const maskedSecretId = maskSecretId(secretId);
 
         // Save secret ID hash to the registration
         const { error: updateRegError } = await supabase
@@ -420,6 +496,15 @@ const CreatorDashboard = () => {
                         >
                           Manage Voters
                         </button>
+                        {election.status !== 'completed' && election.status !== 'cancelled' && (
+                          <button
+                            onClick={() => void handleCancelElection(election.id)}
+                            className="glass py-1.5 px-3 rounded-lg text-xs hover:bg-error/10 text-error transition-all"
+                            title="Cancel Election"
+                          >
+                            <Ban size={12} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

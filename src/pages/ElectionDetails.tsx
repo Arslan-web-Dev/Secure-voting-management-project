@@ -5,6 +5,8 @@ import { Clock, Users, Shield, Calendar, ChevronRight, AlertCircle, CheckCircle2
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../hooks/useAuth';
 import { toast } from 'sonner';
+import { sendEmail } from '../lib/emailService';
+import { registrationConfirmEmail, newVoterRegistrationEmail } from '../lib/emailTemplates';
 import type { CandidateRecord, ElectionRecord } from '../types/models';
 
 type Candidate = Pick<
@@ -25,6 +27,7 @@ interface Election
     | 'max_voters'
     | 'is_locked'
     | 'status'
+    | 'creator_id'
   > {
   candidates: Candidate[];
 }
@@ -124,6 +127,42 @@ const ElectionDetails = () => {
       toast.info('You have been added to the waitlist. You will be notified if a spot becomes available.');
     } else {
       toast.success('Registration submitted! The election creator will review your application.');
+    }
+
+    // 1. Send confirmation email to voter
+    if (user.email) {
+      const voterName = user.user_metadata?.full_name || user.email.split('@')[0];
+      const tpl = registrationConfirmEmail({
+        voterName,
+        electionTitle: election?.title ?? '',
+        status: registrationStatus as 'pending' | 'waitlisted',
+      });
+      await sendEmail({ to: user.email, ...tpl });
+    }
+
+    // 2. Notify election creator
+    const { data: creatorProfile } = await supabase
+      .from('profiles')
+      .select('email, full_name')
+      .eq('id', election?.creator_id ?? '')
+      .single();
+
+    const { count: pendingCount } = await supabase
+      .from('voter_registrations')
+      .select('id', { count: 'exact', head: true })
+      .eq('election_id', id)
+      .eq('status', 'pending');
+
+    if (creatorProfile?.email) {
+      const tpl = newVoterRegistrationEmail({
+        creatorName: creatorProfile.full_name ?? 'Creator',
+        electionTitle: election?.title ?? '',
+        voterName: user.user_metadata?.full_name || user.email?.split('@')[0] || 'A voter',
+        voterEmail: user.email ?? '',
+        pendingCount: pendingCount ?? 1,
+        dashboardUrl: `${window.location.origin}/dashboard`,
+      });
+      await sendEmail({ to: creatorProfile.email, ...tpl });
     }
   };
 

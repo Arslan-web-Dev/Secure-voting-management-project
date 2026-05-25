@@ -7,6 +7,8 @@ import { sendEmail } from '../../lib/emailService';
 import { logActivity } from '../../lib/audit';
 import { useAuth } from '../../hooks/useAuth';
 import { getErrorMessage } from '../../lib/errors';
+import { hashSecretId, maskSecretId } from '../../lib/secretId';
+import { creatorApprovedEmail } from '../../lib/emailTemplates';
 import type { ElectionRecord, ProfileRecord } from '../../types/models';
 
 type CreatorRequest = Pick<
@@ -35,6 +37,7 @@ const AdminDashboard = () => {
   const [elections, setElections] = useState<Election[]>([]);
   const [voters, setVoters] = useState<VoterProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({ totalElections: 0, activeElections: 0, totalVoters: 0, votesCast: 0 });
   const [rejectionId, setRejectionId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   
@@ -82,6 +85,22 @@ const AdminDashboard = () => {
         setVoters(voterProfiles.data as VoterProfile[]);
       }
 
+      // Fetch real stats counts
+      const [totalElec, activeElec, totalVoters, votesCast] = await Promise.all([
+        supabase.from('elections').select('id', { count: 'exact', head: true }),
+        supabase.from('elections').select('id', { count: 'exact', head: true }).in('status', ['active', 'published']),
+        supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'voter'),
+        supabase.from('votes').select('id', { count: 'exact', head: true }),
+      ]);
+      if (isActive) {
+        setStats({
+          totalElections: totalElec.count ?? 0,
+          activeElections: activeElec.count ?? 0,
+          totalVoters: totalVoters.count ?? 0,
+          votesCast: votesCast.count ?? 0,
+        });
+      }
+
       setLoading(false);
     };
 
@@ -115,9 +134,11 @@ const AdminDashboard = () => {
       });
 
       // Send approval email notification
+      const approvalTpl = creatorApprovedEmail({ creatorName: target.full_name ?? 'Creator', dashboardUrl: `${window.location.origin}/dashboard` });
       await sendEmail({
         to: target.email || 'user@example.com',
-        subject: 'Your Election Creator Request is APPROVED',
+        ...approvalTpl,
+        subject: approvalTpl.subject,
         bodyHtml: `
           <h3>Hello ${target.full_name},</h3>
           <p>We are pleased to inform you that your request to become an Election Creator has been approved by the Admin.</p>
@@ -285,8 +306,8 @@ const AdminDashboard = () => {
       const prefix = election.title.substring(0, 3).toUpperCase().replace(/[^A-Z]/g, 'EL');
       const randomSeq = Math.floor(1000 + Math.random() * 9000);
       const secretId = `POLL-${prefix}-${randomSeq}`;
-      const secretIdHash = btoa(secretId); // Simple hash for db
-      const maskedSecretId = `****${secretId.slice(-4)}`;
+      const secretIdHash = await hashSecretId(secretId);
+      const maskedSecretId = maskSecretId(secretId);
 
       // 2. Insert voter registration with status 'approved' (Admin bypasses checks)
       const { error: regError } = await supabase
@@ -346,22 +367,28 @@ const AdminDashboard = () => {
     <div className="d-flex flex-column gap-8">
       {/* Stats */}
       <div className="row g-4">
-        <div className="col-md-4">
+        <div className="col-6 col-md-3">
           <div className="glass-card p-6 border-primary/20 bg-primary/5">
             <h3 className="h1 m-0">{pendingRequests.length}</h3>
-            <p className="text-muted small m-0">Pending Creator Requests</p>
+            <p className="text-muted small m-0">Pending Requests</p>
           </div>
         </div>
-        <div className="col-md-4">
+        <div className="col-6 col-md-3">
           <div className="glass-card p-6">
-            <h3 className="h1 m-0">{requests.filter(r => r.is_approved).length}</h3>
-            <p className="text-muted small m-0">Total Approved Creators</p>
+            <h3 className="h1 m-0">{stats.totalElections}</h3>
+            <p className="text-muted small m-0">Total Elections</p>
           </div>
         </div>
-        <div className="col-md-4">
+        <div className="col-6 col-md-3">
           <div className="glass-card p-6">
-            <h3 className="h1 m-0">{voters.length}</h3>
-            <p className="text-muted small m-0">Total Registered Voters</p>
+            <h3 className="h1 m-0">{stats.totalVoters}</h3>
+            <p className="text-muted small m-0">Registered Voters</p>
+          </div>
+        </div>
+        <div className="col-6 col-md-3">
+          <div className="glass-card p-6">
+            <h3 className="h1 m-0">{stats.votesCast}</h3>
+            <p className="text-muted small m-0">Votes Cast</p>
           </div>
         </div>
       </div>

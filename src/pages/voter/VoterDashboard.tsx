@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Vote, Clock, CheckCircle2, AlertCircle, ChevronRight, BarChart3, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
+import { hashSecretId } from '../../lib/secretId';
 import { useAuth } from '../../hooks/useAuth';
 import type { ElectionStatus, RegistrationStatus } from '../../types/models';
 
@@ -26,6 +27,7 @@ const VoterDashboard = () => {
   const [registrations, setRegistrations] = useState<RegisteredElection[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAllPolls, setShowAllPolls] = useState(false);
+  const [votedElections, setVotedElections] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const fetchRegistrations = async () => {
@@ -57,6 +59,24 @@ const VoterDashboard = () => {
         setRegistrations(normalizedRegistrations);
       }
       setLoading(false);
+
+      // Check which elections this user has already voted in
+      if (data) {
+        const voted = new Set<string>();
+        for (const reg of data as unknown as RegisteredElectionRow[]) {
+          const election = reg.election?.[0];
+          if (!election) continue;
+          const voterHash = await hashSecretId(`${user.id}-${election.id}`);
+          const { data: vote } = await supabase
+            .from('votes')
+            .select('id')
+            .eq('election_id', election.id)
+            .eq('voter_hash', voterHash)
+            .maybeSingle();
+          if (vote) voted.add(election.id);
+        }
+        setVotedElections(voted);
+      }
     };
 
     fetchRegistrations();
@@ -159,12 +179,18 @@ const VoterDashboard = () => {
                       'bg-error/20 text-error'
                     }`}>{reg.status.toUpperCase()}</span>
                     {reg.status === 'approved' && (
-                      <Link
-                        to={`/election/${reg.election.id}/vote`}
-                        className="btn-primary py-2 px-4 small"
-                      >
-                        Vote Now <ChevronRight size={16} />
-                      </Link>
+                      votedElections.has(reg.election.id) ? (
+                        <span className="px-4 py-2 rounded-xl small fw-bold" style={{ background: 'rgba(0,245,160,0.12)', color: 'var(--success)' }}>
+                          ✓ Voted
+                        </span>
+                      ) : (
+                        <Link
+                          to={`/election/${reg.election.id}/vote`}
+                          className="btn-primary py-2 px-4 small"
+                        >
+                          Vote Now <ChevronRight size={16} />
+                        </Link>
+                      )
                     )}
                     {reg.status === 'pending' && (
                       <Link

@@ -35,10 +35,15 @@ const BrowseElections = () => {
 
   useEffect(() => {
     const fetchElections = async () => {
+      // Trigger auto-transition before fetching
+      try { await supabase.rpc('refresh_election_statuses'); } catch { /* ignore */ }
+
       const { data, error } = await supabase
         .from('elections')
         .select('*')
         .neq('status', 'draft')
+        .neq('status', 'pending_approval')
+        .neq('status', 'rejected')
         .order('created_at', { ascending: false });
       if (!error && data) {
         setElections(data as Election[]);

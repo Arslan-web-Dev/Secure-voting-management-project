@@ -407,12 +407,20 @@ const CreatorDashboard = () => {
                       </span>
                     </td>
                     <td className="p-6 text-right">
-                      <button 
-                        onClick={() => handleSelectElection(election)}
-                        className="glass py-1.5 px-3 rounded-lg text-xs hover:bg-white/5 transition-all"
-                      >
-                        Manage Voters
-                      </button>
+                      <div className="d-flex align-items-center justify-content-end gap-2">
+                        <Link
+                          to={`/dashboard/elections/${election.id}/edit`}
+                          className="glass py-1.5 px-3 rounded-lg text-xs hover:bg-white/5 transition-all text-primary"
+                        >
+                          Edit
+                        </Link>
+                        <button 
+                          onClick={() => handleSelectElection(election)}
+                          className="glass py-1.5 px-3 rounded-lg text-xs hover:bg-white/5 transition-all"
+                        >
+                          Manage Voters
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))

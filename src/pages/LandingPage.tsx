@@ -157,9 +157,9 @@ const LandingPage = () => {
                 </Link>
               </motion.div>
               <motion.div variants={bounceIn} whileHover={{ y: -4 }} whileTap={{ scale: 0.95 }} transition={{ duration: 0.2 }}>
-                <button className="glass-deep px-10 py-4 rounded-2xl h5 hover:bg-white/10 transition-all border-white/5">
+                <Link to="/about" className="glass-deep px-10 py-4 rounded-2xl h5 hover:bg-white/10 transition-all border-white/5">
                   View Audit Log
-                </button>
+                </Link>
               </motion.div>
             </motion.div>
           </motion.div>

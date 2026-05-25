@@ -1,13 +1,38 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Shield, Clock, FileText, Download, Filter, Search } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import type { AuditLogRecord } from '../types/models';
 
 type AuditLog = Pick<AuditLogRecord, 'id' | 'action' | 'timestamp' | 'metadata'>;
 
+const ACTION_CATEGORIES: Record<string, string[]> = {
+  Votes: ['VOTE_CAST', 'VOTE_SUBMITTED'],
+  Approvals: ['CREATOR_APPROVED', 'CREATOR_REJECTED', 'VOTER_APPROVED', 'VOTER_REJECTED', 'ELECTION_APPROVED', 'ELECTION_REJECTED'],
+  Logins: ['USER_LOGIN', 'USER_LOGOUT', 'USER_SIGNUP'],
+};
+
+const exportCSV = (logs: AuditLog[]) => {
+  const header = ['Timestamp', 'Action', 'Metadata'];
+  const rows = logs.map(l => [
+    new Date(l.timestamp).toLocaleString(),
+    l.action,
+    JSON.stringify(l.metadata ?? {}),
+  ]);
+  const csv = [header, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `audit-logs-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
 const AuditLogs = () => {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [category, setCategory] = useState('All Actions');
 
   useEffect(() => {
     const fetchLogs = async () => {
@@ -15,15 +40,27 @@ const AuditLogs = () => {
         .from('audit_logs')
         .select('*')
         .order('timestamp', { ascending: false });
-      
-      if (!error && data) {
-        setLogs(data as AuditLog[]);
-      }
+      if (!error && data) setLogs(data as AuditLog[]);
       setLoading(false);
     };
-
     fetchLogs();
   }, []);
+
+  const filtered = useMemo(() => {
+    let result = [...logs];
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter(l =>
+        l.action.toLowerCase().includes(q) ||
+        JSON.stringify(l.metadata ?? {}).toLowerCase().includes(q)
+      );
+    }
+    if (category !== 'All Actions') {
+      const keys = ACTION_CATEGORIES[category] ?? [];
+      result = result.filter(l => keys.some(k => l.action.toUpperCase().includes(k)));
+    }
+    return result;
+  }, [logs, search, category]);
 
   return (
     <div className="d-flex flex-column gap-8">
@@ -37,28 +74,48 @@ const AuditLogs = () => {
             <p className="text-muted small m-0">Every action is recorded and immutable for total transparency.</p>
           </div>
         </div>
-        <button className="glass py-3 px-6 rounded-xl d-flex align-items-center gap-2 hover:bg-white/5 fw-bold small">
+        <button
+          onClick={() => exportCSV(filtered)}
+          className="glass py-3 px-6 rounded-xl d-flex align-items-center gap-2 hover:bg-white/5 fw-bold small transition-all"
+          title="Export visible logs as CSV"
+        >
           <Download size={18} /> Export CSV
         </button>
       </div>
 
       <div className="glass-card p-0 overflow-hidden">
-        <div className="p-6 border-bottom border-white/5 d-flex justify-content-between align-items-center">
+        <div className="p-6 border-bottom border-white/5 d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-4">
           <div className="d-flex align-items-center gap-4">
             <h2 className="h4 font-heading m-0">Activity History</h2>
+            <span className="px-3 py-1 rounded-full small" style={{ background: 'rgba(139,92,246,0.12)', color: 'var(--primary)', fontSize: 12 }}>
+              {filtered.length} entries
+            </span>
+          </div>
+          <div className="d-flex flex-column flex-sm-row gap-3 w-100 w-md-auto">
+            {/* Category Filter */}
             <div className="glass d-flex align-items-center gap-2 px-3 py-2 rounded-lg">
               <Filter size={16} className="text-muted" />
-              <select className="bg-transparent border-none text-muted outline-none small">
+              <select
+                value={category}
+                onChange={e => setCategory(e.target.value)}
+                className="bg-transparent border-none text-muted outline-none small"
+                style={{ minWidth: 120 }}
+              >
                 <option>All Actions</option>
-                <option>Votes</option>
-                <option>Approvals</option>
-                <option>Logins</option>
+                {Object.keys(ACTION_CATEGORIES).map(k => <option key={k}>{k}</option>)}
               </select>
             </div>
-          </div>
-          <div className="glass d-flex align-items-center gap-2 px-3 py-2 rounded-lg">
-            <Search size={16} className="text-muted" />
-            <input type="text" placeholder="Search logs..." className="bg-transparent border-none text-main outline-none small" />
+            {/* Search */}
+            <div className="glass d-flex align-items-center gap-2 px-3 py-2 rounded-lg flex-grow-1">
+              <Search size={16} className="text-muted flex-shrink-0" />
+              <input
+                type="text"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search logs..."
+                className="bg-transparent border-none text-main outline-none small w-100"
+              />
+            </div>
           </div>
         </div>
 
@@ -74,13 +131,9 @@ const AuditLogs = () => {
             </thead>
             <tbody>
               {loading ? (
-                <tr>
-                  <td colSpan={4} className="p-20 text-center">
-                    <div className="spinner mx-auto"></div>
-                  </td>
-                </tr>
-              ) : logs.length > 0 ? (
-                logs.map((log) => (
+                <tr><td colSpan={4} className="p-20 text-center"><div className="spinner mx-auto"></div></td></tr>
+              ) : filtered.length > 0 ? (
+                filtered.map(log => (
                   <tr key={log.id} className="border-bottom border-white/5 hover:bg-white/5 transition-all">
                     <td className="p-6">
                       <div className="d-flex align-items-center gap-3 text-muted small">
@@ -89,9 +142,7 @@ const AuditLogs = () => {
                     </td>
                     <td className="p-6">
                       <div className="d-flex align-items-center gap-3">
-                        <div className="p-2 rounded-lg bg-white/5 text-primary">
-                          <FileText size={16} />
-                        </div>
+                        <div className="p-2 rounded-lg bg-white/5 text-primary"><FileText size={16} /></div>
                         <span className="fw-bold small">{log.action}</span>
                       </div>
                     </td>
@@ -101,17 +152,17 @@ const AuditLogs = () => {
                       </code>
                     </td>
                     <td className="p-6">
-                      <span className="px-3 py-1 rounded-full bg-success/20 text-success text-[10px] fw-bold">VERIFIED</span>
+                      <span className="px-3 py-1 rounded-full bg-success/20 text-success" style={{ fontSize: 10, fontWeight: 'bold' }}>VERIFIED</span>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
                   <td colSpan={4} className="p-20 text-center">
-                    <div className="mb-4 opacity-10">
-                      <Shield size={64} className="mx-auto" />
-                    </div>
-                    <p className="text-muted">No activity logs found. All operations will be logged here.</p>
+                    <div className="mb-4 opacity-10"><Shield size={64} className="mx-auto" /></div>
+                    <p className="text-muted">
+                      {search || category !== 'All Actions' ? 'No logs match your search.' : 'No activity logs found.'}
+                    </p>
                   </td>
                 </tr>
               )}

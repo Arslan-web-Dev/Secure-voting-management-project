@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Vote, Clock, CheckCircle2, AlertCircle, ChevronRight, BarChart3 } from 'lucide-react';
+import { Vote, Clock, CheckCircle2, AlertCircle, ChevronRight, BarChart3, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../hooks/useAuth';
@@ -25,6 +25,7 @@ const VoterDashboard = () => {
   const { user } = useAuth();
   const [registrations, setRegistrations] = useState<RegisteredElection[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAllPolls, setShowAllPolls] = useState(false);
 
   useEffect(() => {
     const fetchRegistrations = async () => {
@@ -51,11 +52,8 @@ const VoterDashboard = () => {
             election: registration.election[0],
           }))
           .filter(
-            (
-              registration
-            ): registration is RegisteredElection => Boolean(registration.election)
+            (registration): registration is RegisteredElection => Boolean(registration.election)
           );
-
         setRegistrations(normalizedRegistrations);
       }
       setLoading(false);
@@ -64,7 +62,11 @@ const VoterDashboard = () => {
     fetchRegistrations();
   }, [user]);
 
-  const activePolls = registrations.filter(r => r.election.status === 'active');
+  const activePolls = registrations.filter(r =>
+    r.election.status === 'active' || r.election.status === 'published'
+  );
+  const completedPolls = registrations.filter(r => r.election.status === 'completed');
+  const displayedPolls = showAllPolls ? activePolls : activePolls.slice(0, 3);
 
   return (
     <div className="d-flex flex-column gap-8">
@@ -88,7 +90,7 @@ const VoterDashboard = () => {
                 <CheckCircle2 size={24} />
               </div>
             </div>
-            <h3 className="h1 m-0">{registrations.filter(r => r.election.status === 'completed').length}</h3>
+            <h3 className="h1 m-0">{completedPolls.length}</h3>
             <p className="text-muted small m-0">Voted Successfully</p>
           </div>
         </div>
@@ -110,7 +112,19 @@ const VoterDashboard = () => {
         <div className="col-md-8">
           <div className="d-flex align-items-center justify-content-between mb-6">
             <h2 className="h4 font-heading m-0">Your Active Polls</h2>
-            <button className="text-primary small fw-bold">View All</button>
+            {activePolls.length > 3 && (
+              <button
+                onClick={() => setShowAllPolls(!showAllPolls)}
+                className="text-primary small fw-bold hover:opacity-80 transition-all"
+              >
+                {showAllPolls ? 'Show Less' : `View All (${activePolls.length})`}
+              </button>
+            )}
+            {activePolls.length === 0 && (
+              <Link to="/elections" className="text-primary small fw-bold hover:opacity-80 transition-all">
+                Browse Elections
+              </Link>
+            )}
           </div>
 
           <div className="d-flex flex-column gap-4">
@@ -119,8 +133,8 @@ const VoterDashboard = () => {
                 <div className="spinner mx-auto"></div>
               </div>
             ) : activePolls.length > 0 ? (
-              activePolls.map((reg) => (
-                <motion.div 
+              displayedPolls.map((reg) => (
+                <motion.div
                   key={reg.id}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -132,7 +146,9 @@ const VoterDashboard = () => {
                     </div>
                     <div>
                       <h4 className="m-0 mb-1">{reg.election.title}</h4>
-                      <p className="text-xs text-muted m-0">Ends {new Date(reg.election.end_date).toLocaleString()}</p>
+                      <p className="text-xs text-muted m-0">
+                        Ends {new Date(reg.election.end_date).toLocaleString()}
+                      </p>
                     </div>
                   </div>
                   <div className="d-flex align-items-center gap-4">
@@ -143,8 +159,19 @@ const VoterDashboard = () => {
                       'bg-error/20 text-error'
                     }`}>{reg.status.toUpperCase()}</span>
                     {reg.status === 'approved' && (
-                      <Link to={`/election/${reg.election.id}/vote`} className="btn-primary py-2 px-4 small">
+                      <Link
+                        to={`/election/${reg.election.id}/vote`}
+                        className="btn-primary py-2 px-4 small"
+                      >
                         Vote Now <ChevronRight size={16} />
+                      </Link>
+                    )}
+                    {reg.status === 'pending' && (
+                      <Link
+                        to={`/election/${reg.election.id}`}
+                        className="glass py-2 px-4 small rounded-lg hover:bg-white/5 text-muted"
+                      >
+                        View
                       </Link>
                     )}
                   </div>
@@ -153,32 +180,53 @@ const VoterDashboard = () => {
             ) : (
               <div className="glass-card p-10 text-center text-muted">
                 <AlertCircle size={32} className="mx-auto mb-4 opacity-20" />
-                <p className="m-0">No active polls at the moment.</p>
-                <button className="text-primary small fw-bold mt-2">Browse Elections</button>
+                <p className="m-0 mb-3">No active polls at the moment.</p>
+                <Link
+                  to="/elections"
+                  className="btn-primary py-2 px-5 rounded-xl small fw-bold d-inline-flex align-items-center gap-2"
+                >
+                  Browse Elections <ChevronRight size={14} />
+                </Link>
               </div>
             )}
           </div>
         </div>
 
-        {/* Upcoming/Recent Activity */}
+        {/* Recent Results */}
         <div className="col-md-4">
-          <h2 className="h4 font-heading mb-6">Recent Results</h2>
-          <div className="glass-card p-6 d-flex flex-column gap-6">
-            {registrations.filter(r => r.election.status === 'completed').slice(0, 3).map((reg) => (
-              <div key={reg.id} className="d-flex align-items-center gap-4">
-                <div className="w-10 h-10 rounded-lg bg-white/5 d-flex align-items-center justify-content-center text-muted">
-                  <BarChart3 size={20} />
-                </div>
-                <div className="flex-grow">
-                  <p className="small fw-bold m-0">{reg.election.title}</p>
-                  <p className="text-xs text-muted m-0">Winner: Candidate A</p>
-                </div>
-                <ChevronRight size={16} className="text-dim" />
-              </div>
-            ))}
-            <button className="glass py-3 rounded-xl small fw-bold text-muted hover:text-main transition-all">
-              View Full History
-            </button>
+          <div className="d-flex align-items-center justify-content-between mb-6">
+            <h2 className="h4 font-heading m-0">Recent Results</h2>
+          </div>
+          <div className="glass-card p-6 d-flex flex-column gap-4">
+            {completedPolls.length === 0 ? (
+              <p className="text-muted small text-center py-4">
+                No completed elections yet.
+              </p>
+            ) : (
+              <>
+                {completedPolls.slice(0, 4).map((reg) => (
+                  <Link
+                    key={reg.id}
+                    to={`/election/${reg.election.id}/results`}
+                    className="d-flex align-items-center gap-4 hover:opacity-80 transition-all"
+                  >
+                    <div className="w-10 h-10 rounded-lg bg-white/5 d-flex align-items-center justify-content-center text-muted flex-shrink-0">
+                      <BarChart3 size={20} />
+                    </div>
+                    <div className="flex-grow overflow-hidden">
+                      <p className="small fw-bold m-0 text-truncate">{reg.election.title}</p>
+                      <p className="text-xs text-muted m-0">Click to view results</p>
+                    </div>
+                    <ExternalLink size={14} className="text-dim flex-shrink-0" />
+                  </Link>
+                ))}
+                {completedPolls.length > 4 && (
+                  <p className="text-muted text-xs text-center mt-2">
+                    +{completedPolls.length - 4} more completed elections
+                  </p>
+                )}
+              </>
+            )}
           </div>
         </div>
       </div>
